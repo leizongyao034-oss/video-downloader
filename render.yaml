@@ -1,0 +1,12 @@
+# Render 部署配置
+
+## 构建设置
+- Build Command: `echo "No build needed"`
+- Start Command: `node server.js`
+
+## 环境变量（可选）
+- PORT: 3000
+
+## 健康检查
+- Path: /
+- Expected Status: 200
