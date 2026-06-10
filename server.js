@@ -8,7 +8,7 @@ const fs = require("fs");
 const path = require("path");
 const { URL } = require("url");
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 const TMP_DIR = path.join(__dirname, "tmp");
 
 // ===== 简单的内存缓存（提升重复查询速度）=====
