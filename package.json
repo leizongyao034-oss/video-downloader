@@ -1,0 +1,23 @@
+{
+  "name": "video-downloader",
+  "version": "1.0.0",
+  "description": "全能视频下载器 - 支持抖音、TikTok、YouTube",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "video",
+    "downloader",
+    "douyin",
+    "tiktok",
+    "youtube"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {}
+}

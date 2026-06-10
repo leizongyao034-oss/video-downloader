@@ -1,0 +1,1342 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🚀 超级视频下载器 - 抖音 TikTok YouTube</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0a0f; --surface: #1a1a2e; --surface-hover: #222240;
+      --primary: #fe2c55; --primary-hover: #ff4d73;
+      --secondary: #25f4ee; --secondary-hover: #3afffd;
+      --text: #fff; --text-muted: #a0a0b0; --border: #2a2a3e;
+      --error: #ff4757; --success: #2ecc71; --radius: 16px;
+      --shadow: 0 8px 32px rgba(0,0,0,0.6);
+      --glow: 0 0 20px rgba(254, 44, 85, 0.3);
+      --glow-blue: 0 0 20px rgba(37, 244, 238, 0.3);
+    }
+
+    /* 动态背景 */
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background:
+        radial-gradient(circle at 20% 50%, rgba(254, 44, 85, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(37, 244, 238, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 40% 20%, rgba(138, 43, 226, 0.08) 0%, transparent 50%);
+      animation: bgFloat 20s ease-in-out infinite;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    @keyframes bgFloat {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      33% { transform: translate(30px, -30px) rotate(120deg); }
+      66% { transform: translate(-20px, 20px) rotate(240deg); }
+    }
+
+    .app {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .link-input-area {
+      text-align: center;
+      margin-bottom: 3rem;
+      animation: slideDown 0.6s ease-out;
+    }
+
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .app-title {
+      font-size: 2.8rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 50%, #8a2be2 100%);
+      background-size: 200% 200%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.5rem;
+      animation: gradientShift 3s ease infinite, textGlow 2s ease-in-out infinite;
+      position: relative;
+      display: inline-block;
+      letter-spacing: -1px;
+    }
+
+    @keyframes gradientShift {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+
+    @keyframes textGlow {
+      0%, 100% { filter: drop-shadow(0 0 10px rgba(254, 44, 85, 0.5)); }
+      50% { filter: drop-shadow(0 0 20px rgba(37, 244, 238, 0.8)); }
+    }
+
+    .app-subtitle {
+      color: var(--text-muted);
+      font-size: 1rem;
+      margin-bottom: 2rem;
+      animation: fadeIn 0.8s ease-out 0.3s both;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+</style>
+</head>
+<body>
+  <main class="app">
+    <header class="link-input-area">
+      <h1 class="app-title">超级视频下载器</h1>
+      <p class="app-subtitle">支持 抖音 & TikTok & YouTube — 粘贴链接，预览内容，一键下载</p>
+      <!-- 单链接输入 -->
+      <form id="input-form" class="input-row" autocomplete="off">
+        <label class="visually-hidden" for="link-input">视频链接</label>
+        <input id="link-input" class="link-input" type="text" inputmode="url"
+          placeholder="粘贴抖音、TikTok 或 YouTube 链接…" />
+        <button id="parse-btn" class="parse-btn" type="submit">
+          <span class="btn-text">解析</span>
+          <span class="btn-loading" hidden>
+            <svg class="spinner" viewBox="0 0 24 24" width="20" height="20">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"
+                fill="none" stroke-dasharray="31.4 31.4" stroke-linecap="round"/>
+            </svg>
+          </span>
+        </button>
+      </form>
+      <!-- 批量输入 -->
+      <div class="batch-toggle">
+        <button id="toggle-batch" class="toggle-batch-btn">📋 批量解析</button>
+      </div>
+      <div id="batch-area" class="batch-area" hidden>
+        <textarea id="batch-input" class="batch-input" rows="5"
+          placeholder="每行一个链接，支持抖音、TikTok 和 YouTube 混合粘贴"></textarea>
+        <button id="batch-btn" class="parse-btn batch-btn">批量解析全部</button>
+      </div>
+      <p id="input-error" class="input-error" role="alert"></p>
+    </header>
+
+    <section class="preview-list-area">
+      <div id="empty-state" class="empty-state">
+        <div class="empty-icon">📥</div>
+        <p>还没有任何预览，请在上方输入链接并点击解析。</p>
+        <p class="empty-state-hint">💡 支持直接粘贴分享文本，会自动提取链接</p>
+        <p class="empty-state-hint">支持抖音、TikTok 视频/图集 和 YouTube 视频，可批量粘贴多个链接</p>
+      </div>
+      <div id="preview-list" class="preview-list" role="list" hidden></div>
+    </section>
+  </main>
+<style>
+    /* 玻璃态输入框 */
+    .input-row {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      animation: fadeIn 0.8s ease-out 0.5s both;
+    }
+
+    .link-input {
+      flex: 1;
+      padding: 1rem 1.5rem;
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      background: rgba(26, 26, 46, 0.6);
+      backdrop-filter: blur(10px);
+      color: var(--text);
+      font-size: 1rem;
+      outline: none;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    .link-input:focus {
+      border-color: var(--primary);
+      background: rgba(26, 26, 46, 0.8);
+      box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3), var(--glow);
+      transform: translateY(-2px);
+    }
+
+    .link-input::placeholder { color: var(--text-muted); }
+
+    /* 炫酷按钮 */
+    .parse-btn {
+      padding: 1rem 2.5rem;
+      border: none;
+      border-radius: var(--radius);
+      background: linear-gradient(135deg, var(--primary), #ff1744);
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 120px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 4px 15px rgba(254, 44, 85, 0.4);
+    }
+
+    .parse-btn::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.3);
+      transform: translate(-50%, -50%);
+      transition: width 0.6s, height 0.6s;
+    }
+
+    .parse-btn:hover:not(:disabled)::before {
+      width: 300px;
+      height: 300px;
+    }
+
+    .parse-btn:hover:not(:disabled) {
+      transform: translateY(-3px) scale(1.05);
+      box-shadow: 0 8px 25px rgba(254, 44, 85, 0.6), var(--glow);
+    }
+
+    .parse-btn:active:not(:disabled) {
+      transform: translateY(-1px) scale(1.02);
+    }
+
+    .parse-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .spinner {
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .input-error {
+      color: var(--error);
+      font-size: 0.9rem;
+      margin-top: 0.75rem;
+      min-height: 1.2em;
+      animation: shake 0.4s ease;
+      font-weight: 500;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-10px); }
+      75% { transform: translateX(10px); }
+    }
+    /* 批量功能 */
+    .batch-toggle { margin-top: 1rem; }
+    .toggle-batch-btn {
+      background: rgba(26, 26, 46, 0.4);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text-muted);
+      padding: 0.6rem 1.5rem;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      backdrop-filter: blur(5px);
+    }
+    .toggle-batch-btn:hover {
+      color: var(--secondary);
+      border-color: var(--secondary);
+      box-shadow: var(--glow-blue);
+      transform: translateY(-2px);
+    }
+
+    .batch-area {
+      margin-top: 1rem;
+      animation: slideDown 0.3s ease-out;
+    }
+
+    .batch-input {
+      width: 100%;
+      padding: 1rem 1.5rem;
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      background: rgba(26, 26, 46, 0.6);
+      backdrop-filter: blur(10px);
+      color: var(--text);
+      font-size: 0.95rem;
+      resize: vertical;
+      outline: none;
+      font-family: 'Courier New', monospace;
+      transition: all 0.3s ease;
+      box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    .batch-input:focus {
+      border-color: var(--secondary);
+      box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3), var(--glow-blue);
+    }
+
+    .batch-input::placeholder { color: var(--text-muted); }
+    .batch-btn { width: 100%; margin-top: 0.75rem; }
+    .batch-progress { color: var(--text-muted); font-size: 0.9rem; margin-top: 0.75rem; }
+
+    /* 空状态 */
+    .empty-state {
+      text-align: center;
+      padding: 5rem 1rem;
+      color: var(--text-muted);
+      animation: fadeIn 0.6s ease-out;
+    }
+
+    .empty-icon {
+      font-size: 4rem;
+      margin-bottom: 1.5rem;
+      animation: float 3s ease-in-out infinite;
+      display: inline-block;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-20px); }
+    }
+
+    .empty-state-hint {
+      font-size: 0.9rem;
+      opacity: 0.7;
+      margin-top: 0.75rem;
+    }
+    .preview-list { display: flex; flex-direction: column; gap: 2rem; }
+
+    .preview-card {
+      background: rgba(26, 26, 46, 0.6);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: var(--shadow), 0 0 0 1px rgba(255, 255, 255, 0.05);
+      animation: cardAppear 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+    }
+
+    .preview-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--primary), var(--secondary), var(--primary));
+      background-size: 200% 100%;
+      animation: shimmer 3s linear infinite;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .preview-card:hover::before {
+      opacity: 1;
+    }
+
+    .preview-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.8), var(--glow);
+      border-color: rgba(254, 44, 85, 0.3);
+    }
+
+    @keyframes cardAppear {
+      from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid rgba(42, 42, 62, 0.5);
+      background: rgba(26, 26, 46, 0.4);
+    }
+
+    .card-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      object-fit: cover;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      transition: transform 0.3s ease;
+    }
+
+    .card-avatar:hover {
+      transform: scale(1.1) rotate(5deg);
+    }
+
+    .card-info { flex: 1; min-width: 0; }
+
+    .card-author {
+      font-weight: 600;
+      font-size: 0.95rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 0.25rem;
+    }
+
+    .card-desc {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .card-type-badge {
+      padding: 0.4rem 0.9rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      animation: pulse 2s ease-in-out infinite;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    .badge-tiktok {
+      background: linear-gradient(135deg, rgba(254,44,85,0.3), rgba(254,44,85,0.15));
+      color: var(--primary);
+      border: 1px solid rgba(254,44,85,0.3);
+    }
+
+    .badge-douyin {
+      background: linear-gradient(135deg, rgba(0,0,0,0.4), rgba(0,0,0,0.2));
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.3);
+    }
+
+    .badge-youtube {
+      background: linear-gradient(135deg, rgba(255,0,0,0.3), rgba(255,0,0,0.15));
+      color: #ff4444;
+      border: 1px solid rgba(255,0,0,0.3);
+    }
+    .card-video-wrap {
+      position: relative;
+      background: #000;
+      max-height: 600px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .card-video {
+      width: 100%;
+      max-height: 600px;
+      object-fit: contain;
+      transition: transform 0.3s ease;
+    }
+
+    .card-video:hover {
+      transform: scale(1.02);
+    }
+
+    /* 视频控制栏 */
+    .video-controls {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+      padding: 1rem;
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+
+    .card-video-wrap:hover .video-controls {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .video-control-btn {
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: white;
+      padding: 0.4rem 0.8rem;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      backdrop-filter: blur(5px);
+    }
+
+    .video-control-btn:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: translateY(-2px);
+    }
+
+    .speed-select {
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: white;
+      padding: 0.4rem;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      backdrop-filter: blur(5px);
+    }
+
+    .speed-select option {
+      background: #1a1a2e;
+      color: white;
+    }
+
+    .card-images-wrap {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 0.75rem;
+      padding: 1rem;
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    .card-image-thumb {
+      width: 100%;
+      aspect-ratio: 1;
+      object-fit: cover;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      border: 2px solid transparent;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .card-image-thumb:hover {
+      transform: scale(1.08) rotate(2deg);
+      border-color: var(--primary);
+      box-shadow: 0 8px 20px rgba(254, 44, 85, 0.4);
+      z-index: 10;
+    }
+    .card-actions {
+      display: flex;
+      gap: 0.75rem;
+      padding: 1.25rem 1.5rem;
+      border-top: 1px solid rgba(42, 42, 62, 0.5);
+      flex-wrap: wrap;
+      background: rgba(26, 26, 46, 0.3);
+    }
+
+    .download-btn {
+      flex: 1;
+      min-width: 140px;
+      padding: 0.85rem 1.25rem;
+      border: none;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      text-decoration: none;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .download-btn::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      transform: translate(-50%, -50%);
+      transition: width 0.5s, height 0.5s;
+    }
+
+    .download-btn:hover::after {
+      width: 300px;
+      height: 300px;
+    }
+
+    .download-btn:hover {
+      transform: translateY(-3px);
+    }
+
+    .download-btn:active {
+      transform: translateY(-1px);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), #ff1744);
+      color: #fff;
+      box-shadow: 0 4px 15px rgba(254, 44, 85, 0.4);
+    }
+
+    .btn-primary:hover {
+      box-shadow: 0 6px 20px rgba(254, 44, 85, 0.6);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(10px);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: var(--primary);
+      box-shadow: 0 4px 15px rgba(254, 44, 85, 0.3);
+    }
+
+    .btn-youtube {
+      background: linear-gradient(135deg, #cc0000, #ff0000);
+      color: #fff;
+      box-shadow: 0 4px 15px rgba(255, 0, 0, 0.4);
+    }
+
+    .btn-youtube:hover {
+      box-shadow: 0 6px 20px rgba(255, 0, 0, 0.6);
+    }
+
+    .remove-btn {
+      padding: 0.85rem 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      backdrop-filter: blur(5px);
+    }
+
+    .remove-btn:hover {
+      color: var(--error);
+      border-color: var(--error);
+      background: rgba(255, 71, 87, 0.1);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(255, 71, 87, 0.3);
+    }
+    .youtube-avatar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, rgba(255,0,0,0.2), rgba(255,0,0,0.1));
+      border: 2px solid rgba(255, 0, 0, 0.3);
+    }
+
+    .youtube-embed-wrap {
+      position: relative;
+      padding-bottom: 56.25%;
+      height: 0;
+      overflow: hidden;
+      background: #000;
+      box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .youtube-embed-wrap iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+    }
+
+    .yt-download-section {
+      padding: 1.25rem 1.5rem;
+      border-top: 1px solid rgba(42, 42, 62, 0.5);
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    .yt-download-section p {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      margin-bottom: 1rem;
+      font-weight: 500;
+    }
+
+    .yt-quality-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 0.75rem;
+    }
+
+    /* 灯箱效果 */
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.95);
+      backdrop-filter: blur(10px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      animation: fadeIn 0.3s ease;
+      cursor: pointer;
+    }
+
+    .lightbox img {
+      max-width: 90vw;
+      max-height: 90vh;
+      object-fit: contain;
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), var(--glow);
+      animation: zoomIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    @keyframes zoomIn {
+      from {
+        opacity: 0;
+        transform: scale(0.8);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    .lightbox-close {
+      position: absolute;
+      top: 2rem;
+      right: 2rem;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      color: #fff;
+      font-size: 1.5rem;
+      cursor: pointer;
+      opacity: 0.8;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .lightbox-close:hover {
+      opacity: 1;
+      background: rgba(255, 71, 87, 0.3);
+      border-color: var(--error);
+      transform: rotate(90deg) scale(1.1);
+    }
+
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0,0,0,0);
+    }
+
+    /* 成功提示 */
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      background: linear-gradient(135deg, var(--success), #27ae60);
+      color: white;
+      padding: 1rem 1.5rem;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(46, 204, 113, 0.4);
+      animation: slideInRight 0.3s ease, fadeOut 0.3s ease 2.7s;
+      z-index: 1001;
+      font-weight: 600;
+    }
+
+    @keyframes slideInRight {
+      from {
+        opacity: 0;
+        transform: translateX(100px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    @keyframes fadeOut {
+      to {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+    }
+
+    /* 响应式设计 */
+    @media (max-width: 600px) {
+      .app { padding: 1.5rem 1rem; }
+      .app-title { font-size: 2rem; }
+      .app-subtitle { font-size: 0.9rem; }
+      .input-row { flex-direction: column; }
+      .parse-btn { width: 100%; padding: 1rem; }
+      .card-images-wrap { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+      .card-actions { flex-direction: column; }
+      .download-btn { min-width: unset; }
+      .yt-quality-grid { grid-template-columns: repeat(2, 1fr); }
+      .empty-icon { font-size: 3rem; }
+      .lightbox-close { top: 1rem; right: 1rem; width: 40px; height: 40px; }
+    }
+  </style>
+<script>
+const form = document.getElementById("input-form");
+const input = document.getElementById("link-input");
+const parseBtn = document.getElementById("parse-btn");
+const btnText = parseBtn.querySelector(".btn-text");
+const btnLoading = parseBtn.querySelector(".btn-loading");
+const errorEl = document.getElementById("input-error");
+const emptyState = document.getElementById("empty-state");
+const previewList = document.getElementById("preview-list");
+const toggleBatchBtn = document.getElementById("toggle-batch");
+const batchArea = document.getElementById("batch-area");
+const batchInput = document.getElementById("batch-input");
+const batchBtn = document.getElementById("batch-btn");
+
+const API_BASE = location.origin.startsWith("http") && location.port ? location.origin : "http://localhost:3000";
+let items = [];
+
+// ===== 成功提示函数 =====
+function showToast(message) {
+  const toast = document.createElement("div");
+  toast.className = "toast";
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+// ===== 快捷键支持 =====
+document.addEventListener("keydown", (e) => {
+  // Ctrl/Cmd + V 自动聚焦到输入框
+  if ((e.ctrlKey || e.metaKey) && e.key === "v" && document.activeElement.tagName !== "INPUT" && document.activeElement.tagName !== "TEXTAREA") {
+    input.focus();
+  }
+  // Escape 关闭批量输入
+  if (e.key === "Escape" && !batchArea.hidden) {
+    batchArea.hidden = true;
+    toggleBatchBtn.textContent = "📋 批量解析";
+  }
+});
+
+// ===== 自动粘贴检测 =====
+input.addEventListener("paste", (e) => {
+  setTimeout(() => {
+    const rawText = input.value.trim();
+    if (rawText) {
+      // 自动提取链接
+      const extractedUrl = extractUrl(rawText);
+      if (extractedUrl && extractedUrl !== rawText) {
+        input.value = extractedUrl;
+        showToast("✨ 已自动提取链接！");
+      } else if (extractedUrl) {
+        showToast("✨ 检测到链接，按回车开始解析！");
+      }
+    }
+  }, 100);
+});
+
+// 批量输入也添加智能提取提示
+batchInput.addEventListener("paste", () => {
+  setTimeout(() => {
+    const text = batchInput.value.trim();
+    if (text) {
+      const lines = text.split(/[\n\r]+/).filter(Boolean);
+      const validUrls = lines.filter(line => extractUrl(line)).length;
+      if (validUrls > 0) {
+        showToast(`✨ 检测到 ${validUrls} 个有效链接！`);
+      }
+    }
+  }, 100);
+});
+
+// ===== 单链接提交 =====
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  let url = input.value.trim();
+  if (!url) { showError("请输入链接"); return; }
+
+  // 智能提取链接
+  url = extractUrl(url);
+  if (!url) { showError("未检测到有效链接"); return; }
+
+  const platform = detectPlatform(url);
+  if (!platform) { showError("请输入有效的抖音、TikTok 或 YouTube 链接"); return; }
+  clearError(); setLoading(true);
+  try {
+    await parseOne(url, platform);
+    input.value = "";
+    showToast("✅ 解析成功！");
+  } catch (err) { showError(err.message || "解析失败"); }
+  finally { setLoading(false); }
+});
+
+// ===== 智能提取链接 =====
+function extractUrl(text) {
+  // 匹配抖音短链接（最常见的格式）
+  const douyinMatch = text.match(/https?:\/\/v\.douyin\.com\/[a-zA-Z0-9_]+/i);
+  if (douyinMatch) return douyinMatch[0];
+
+  // 匹配抖音完整链接
+  const douyinFullMatch = text.match(/https?:\/\/(?:www\.)?douyin\.com\/(?:video|share\/video)\/\d+/i);
+  if (douyinFullMatch) return douyinFullMatch[0];
+
+  // 匹配 TikTok 链接
+  const tiktokMatch = text.match(/https?:\/\/(?:www\.|vm\.|vt\.|m\.)?tiktok\.com\/[^\s]*/i);
+  if (tiktokMatch) return tiktokMatch[0].replace(/[^\w:\/\.\-\?=&@]/g, '');
+
+  // 匹配 YouTube 链接
+  const youtubeMatch = text.match(/https?:\/\/(?:www\.|m\.|music\.)?(?:youtube\.com|youtu\.be)\/[^\s]*/i);
+  if (youtubeMatch) return youtubeMatch[0].replace(/[^\w:\/\.\-\?=&]/g, '');
+
+  // 如果没有匹配到特定格式，但看起来像个URL，就返回
+  if (text.startsWith('http://') || text.startsWith('https://')) {
+    return text.split(/[\s\n\r]/)[0];
+  }
+
+  return null;
+}
+
+// ===== 批量功能 =====
+toggleBatchBtn.addEventListener("click", () => {
+  batchArea.hidden = !batchArea.hidden;
+  toggleBatchBtn.textContent = batchArea.hidden ? "📋 批量解析" : "✕ 关闭批量";
+  if (!batchArea.hidden) {
+    batchInput.focus();
+  }
+});
+
+batchBtn.addEventListener("click", async () => {
+  const text = batchInput.value.trim();
+  if (!text) { showError("请输入至少一个链接"); return; }
+
+  // 智能提取所有链接
+  const lines = text.split(/[\n\r]+/).map(s => s.trim()).filter(Boolean);
+  const urls = [];
+
+  for (const line of lines) {
+    const extractedUrl = extractUrl(line);
+    if (extractedUrl) {
+      urls.push(extractedUrl);
+    }
+  }
+
+  if (!urls.length) { showError("没有检测到有效链接"); return; }
+
+  clearError();
+  batchBtn.disabled = true;
+  batchBtn.textContent = `🚀 解析中 0/${urls.length}...`;
+  let success = 0, fail = 0;
+
+  for (let i = 0; i < urls.length; i++) {
+    const url = urls[i];
+    const platform = detectPlatform(url);
+    batchBtn.textContent = `🚀 解析中 ${i+1}/${urls.length}...`;
+    if (!platform) { fail++; continue; }
+    try {
+      await parseOne(url, platform);
+      success++;
+      await new Promise(r => setTimeout(r, 300)); // 避免请求过快
+    } catch (e) { fail++; }
+  }
+
+  batchBtn.disabled = false;
+  batchBtn.textContent = "批量解析全部";
+  batchInput.value = "";
+  showToast(`🎉 完成！成功 ${success} 个，失败 ${fail} 个`);
+  if (fail > 0) showError(`完成: ${success} 成功, ${fail} 失败`);
+});
+
+// ===== 解析单个链接 =====
+async function parseOne(url, platform) {
+  if (platform === "tiktok") {
+    const data = await fetchTikTokData(url);
+    addTikTokItem(data);
+  } else if (platform === "douyin") {
+    const data = await fetchDouyinData(url);
+    addDouyinItem(data);
+  } else {
+    const data = await fetchYouTubeInfo(url);
+    addYouTubeItem(url, data);
+  }
+}
+
+// ===== 平台检测（优化版）=====
+function detectPlatform(url) {
+  // 抖音优先检测（中国用户最常用）
+  if (isValidDouyinUrl(url)) return "douyin";
+  if (isValidTikTokUrl(url)) return "tiktok";
+  if (isValidYouTubeUrl(url)) return "youtube";
+  return null;
+}
+function isValidTikTokUrl(url) {
+  return [/tiktok\.com\/@[\w.]+\/video\/\d+/i, /tiktok\.com\/@[\w.]+\/photo\/\d+/i,
+    /vm\.tiktok\.com\/[\w]+/i, /vt\.tiktok\.com\/[\w]+/i,
+    /tiktok\.com\/t\/[\w]+/i, /tiktok\.com\/[\w]+/i].some(p => p.test(url));
+}
+function isValidDouyinUrl(url) {
+  return [/v\.douyin\.com\/[\w]+/i, /www\.douyin\.com\/video\/\d+/i,
+    /www\.iesdouyin\.com\/share\/video\/\d+/i,
+    /douyin\.com\/[\w]+/i].some(p => p.test(url));
+}
+function isValidYouTubeUrl(url) {
+  return [/(?:www\.)?youtube\.com\/watch\?v=[\w-]+/i, /(?:www\.)?youtube\.com\/shorts\/[\w-]+/i,
+    /(?:www\.)?youtube\.com\/embed\/[\w-]+/i, /youtu\.be\/[\w-]+/i,
+    /(?:m\.)?youtube\.com\/watch\?v=[\w-]+/i].some(p => p.test(url));
+}
+function extractYouTubeId(url) {
+  const m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([\w-]+)/i);
+  return m ? m[1] : null;
+}
+
+// ===== API 请求 =====
+async function fetchTikTokData(url) {
+  const resp = await fetch(`https://www.tikwm.com/api/?url=${encodeURIComponent(url)}&hd=1`);
+  if (!resp.ok) throw new Error("网络请求失败");
+  const json = await resp.json();
+  if (json.code !== 0 || !json.data) throw new Error(json.msg || "TikTok 解析失败");
+  return json.data;
+}
+async function fetchDouyinData(url) {
+  // 使用 yt-dlp 通过本地服务器解析抖音
+  let resp;
+  try { resp = await fetch(`${API_BASE}/api/douyin/info?url=${encodeURIComponent(url)}`); }
+  catch (e) { throw new Error("无法连接本地服务，请先双击运行「启动下载器.bat」"); }
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err.error || "抖音解析失败");
+  }
+  return await resp.json();
+}
+async function fetchYouTubeInfo(url) {
+  let resp;
+  try { resp = await fetch(`${API_BASE}/api/youtube/info?url=${encodeURIComponent(url)}`); }
+  catch (e) { throw new Error("无法连接本地服务，请先双击运行「启动下载器.bat」"); }
+  if (!resp.ok) { const err = await resp.json().catch(() => ({})); throw new Error(err.error || "YouTube 解析失败"); }
+  return await resp.json();
+}
+// ===== 添加项目 =====
+function addTikTokItem(data) {
+  items.unshift({ id: Date.now() + Math.random(), platform: "tiktok", data, type: data.images && data.images.length > 0 ? "images" : "video" });
+  renderList();
+}
+function addDouyinItem(data) {
+  items.unshift({ id: Date.now() + Math.random(), platform: "douyin", data });
+  renderList();
+}
+function addYouTubeItem(url, data) {
+  items.unshift({ id: Date.now() + Math.random(), platform: "youtube", originalUrl: url, videoId: extractYouTubeId(url), data });
+  renderList();
+}
+
+// ===== 渲染 =====
+function renderList() {
+  if (items.length === 0) { emptyState.hidden = false; previewList.hidden = true; return; }
+  emptyState.hidden = true; previewList.hidden = false;
+  previewList.innerHTML = items.map(renderCard).join("");
+  bindEvents();
+}
+function renderCard(item) {
+  if (item.platform === "tiktok") return renderTikTokCard(item);
+  if (item.platform === "douyin") return renderDouyinCard(item);
+  return renderYouTubeCard(item);
+}
+function renderTikTokCard(item) {
+  const { data, type, id } = item;
+  const author = data.author?.nickname || data.author?.unique_id || "未知用户";
+  const avatar = data.author?.avatar || "";
+  const desc = data.title || "无描述";
+  let media = "", actions = "";
+  if (type === "video") {
+    const videoUrl = data.hdplay || data.play;
+    const cover = data.origin_cover || data.cover;
+    const videoId = `video-${id}`;
+    media = `<div class="card-video-wrap">
+      <video id="${videoId}" class="card-video" controls preload="metadata" poster="${cover}">
+        <source src="${videoUrl}" type="video/mp4">
+      </video>
+      <div class="video-controls">
+        <button class="video-control-btn" onclick="document.getElementById('${videoId}').requestPictureInPicture().catch(()=>{})">📺 画中画</button>
+        <select class="speed-select" onchange="document.getElementById('${videoId}').playbackRate = this.value">
+          <option value="0.5">0.5x</option>
+          <option value="0.75">0.75x</option>
+          <option value="1" selected>1x</option>
+          <option value="1.25">1.25x</option>
+          <option value="1.5">1.5x</option>
+          <option value="2">2x</option>
+        </select>
+        <button class="video-control-btn" onclick="
+          const v = document.getElementById('${videoId}');
+          v.currentTime = 0; v.play();
+        ">🔄 重播</button>
+      </div>
+    </div>`;
+    actions = `<a class="download-btn btn-primary" href="${data.hdplay || data.play}" target="_blank" download>⬇️ 下载高清视频</a>
+      ${data.play && data.hdplay ? `<a class="download-btn btn-secondary" href="${data.play}" target="_blank" download>📹 标清视频</a>` : ""}
+      ${data.music ? `<a class="download-btn btn-secondary" href="${data.music}" target="_blank" download>🎵 背景音乐</a>` : ""}`;
+  } else {
+    media = `<div class="card-images-wrap">${data.images.map((img, i) => `<img class="card-image-thumb" src="${img}" alt="图片${i+1}" data-full="${img}" loading="lazy"/>`).join("")}</div>`;
+    actions = `<button class="download-btn btn-primary" data-action="download-all-images" data-id="${id}">📥 全部图片 (${data.images.length}张)</button>
+      ${data.music ? `<a class="download-btn btn-secondary" href="${data.music}" target="_blank" download>🎵 背景音乐</a>` : ""}`;
+  }
+  return `<article class="preview-card" data-id="${id}">
+    <div class="card-header">
+      ${avatar ? `<img class="card-avatar" src="${avatar}" alt="作者头像"/>` : `<div class="card-avatar"></div>`}
+      <div class="card-info"><div class="card-author">${esc(author)}</div><div class="card-desc" title="${esc(desc)}">${esc(desc)}</div></div>
+      <span class="card-type-badge badge-tiktok">🎵 TikTok</span>
+    </div>${media}
+    <div class="card-actions">${actions}<button class="remove-btn" data-action="remove" data-id="${id}">🗑️ 移除</button></div>
+  </article>`;
+}
+
+function renderDouyinCard(item) {
+  const { data, id } = item;
+  const title = data.title || "抖音视频";
+  const author = data.author || "未知作者";
+  const thumbnail = data.thumbnail || "";
+  const videoUrl = data.url || "";
+  const duration = data.duration ? fmtDuration(data.duration) : "";
+  const webpageUrl = data.webpage_url || data.originalUrl;
+
+  // 添加视频预览
+  let media = "";
+  if (videoUrl) {
+    const videoId = `video-douyin-${id}`;
+    media = `<div class="card-video-wrap">
+      <video id="${videoId}" class="card-video" controls preload="metadata" ${thumbnail ? `poster="${thumbnail}"` : ''} crossorigin="anonymous">
+        <source src="${videoUrl}" type="video/mp4">
+        您的浏览器不支持视频播放
+      </video>
+      <div class="video-controls">
+        <button class="video-control-btn" onclick="document.getElementById('${videoId}').requestPictureInPicture().catch(e=>console.log(e))">📺 画中画</button>
+        <select class="speed-select" onchange="document.getElementById('${videoId}').playbackRate = this.value">
+          <option value="0.5">0.5x</option>
+          <option value="0.75">0.75x</option>
+          <option value="1" selected>1x</option>
+          <option value="1.25">1.25x</option>
+          <option value="1.5">1.5x</option>
+          <option value="2">2x</option>
+        </select>
+        <button class="video-control-btn" onclick="
+          const v = document.getElementById('${videoId}');
+          v.currentTime = 0; v.play();
+        ">🔄 重播</button>
+        <button class="video-control-btn" onclick="window.open('${webpageUrl}', '_blank')">🔗 原页面</button>
+      </div>
+    </div>`;
+  } else if (thumbnail) {
+    media = `<div class="card-video-wrap">
+      <img src="${thumbnail}" alt="视频封面" style="width:100%; max-height:600px; object-fit:contain;"/>
+      <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.7); padding:1rem; border-radius:12px; color:white;">
+        ⚠️ 视频链接暂时无法预览，请直接下载
+      </div>
+    </div>`;
+  }
+
+  return `<article class="preview-card" data-id="${id}">
+    <div class="card-header">
+      <div class="card-avatar" style="background: linear-gradient(135deg, #000, #333); display: flex; align-items: center; justify-content: center;">
+        <span style="font-size: 24px;">📱</span>
+      </div>
+      <div class="card-info">
+        <div class="card-author">${esc(author)}${duration ? ` · ⏱️ ${duration}` : ""}</div>
+        <div class="card-desc" title="${esc(title)}">${esc(title)}</div>
+      </div>
+      <span class="card-type-badge badge-douyin">📱 抖音</span>
+    </div>
+    ${media}
+    <div class="card-actions">
+      <a class="download-btn btn-primary" href="${API_BASE}/api/douyin/download?url=${encodeURIComponent(data.originalUrl)}" download>⬇️ 下载视频</a>
+      <a class="download-btn btn-secondary" data-action="copy-link" data-url="${data.originalUrl || webpageUrl}">🔗 复制链接</a>
+      <button class="remove-btn" data-action="remove" data-id="${id}">🗑️ 移除</button>
+    </div>
+  </article>`;
+}
+
+function renderYouTubeCard(item) {
+  const { id, originalUrl, videoId, data } = item;
+  const title = data.title || originalUrl;
+  const author = data.author || "YouTube";
+  const duration = data.duration ? fmtDuration(data.duration) : "";
+
+  // 使用 YouTube 嵌入式播放器实现真正的视频预览
+  const embedUrl = `https://www.youtube.com/embed/${videoId}`;
+
+  const dlLinks = (data.downloadOptions || []).map((opt, i) => {
+    const params = new URLSearchParams({ url: originalUrl, format: opt.format, audioOnly: opt.audioOnly ? "true" : "false" });
+    const href = `${API_BASE}/api/youtube/download?${params.toString()}`;
+    const cls = i === 0 ? "btn-youtube" : "btn-secondary";
+    const icon = opt.audioOnly ? "🎵" : "⬇️";
+    return `<a class="download-btn ${cls}" href="${href}" download>${icon} ${opt.label}</a>`;
+  }).join("");
+
+  return `<article class="preview-card" data-id="${id}">
+    <div class="card-header">
+      <div class="card-avatar youtube-avatar">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="#ff0000">
+          <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814z"/>
+          <path d="M9.545 15.568V8.432L15.818 12l-6.273 3.568z" fill="#fff"/>
+        </svg>
+      </div>
+      <div class="card-info">
+        <div class="card-author">${esc(author)}${duration ? ` · ⏱️ ${duration}` : ""}</div>
+        <div class="card-desc" title="${esc(title)}">${esc(title)}</div>
+      </div>
+      <span class="card-type-badge badge-youtube">▶️ YouTube</span>
+    </div>
+    <div class="youtube-embed-wrap">
+      <iframe src="${embedUrl}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe>
+    </div>
+    <div class="yt-download-section">
+      <p>💾 选择画质下载（本机直接下载完整文件）：</p>
+      <div class="yt-quality-grid">${dlLinks}</div>
+    </div>
+    <div class="card-actions">
+      <button class="remove-btn" data-action="remove" data-id="${id}">🗑️ 移除</button>
+    </div>
+  </article>`;
+}
+function fmtDuration(s) {
+  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = Math.floor(s%60);
+  if (h > 0) return `${h}:${String(m).padStart(2,"0")}:${String(sec).padStart(2,"0")}`;
+  return `${m}:${String(sec).padStart(2,"0")}`;
+}
+
+// ===== 事件绑定 =====
+function bindEvents() {
+  previewList.querySelectorAll('[data-action="remove"]').forEach(btn => {
+    btn.onclick = () => { items = items.filter(i => i.id !== Number(btn.dataset.id)); renderList(); };
+  });
+  previewList.querySelectorAll(".card-image-thumb").forEach(img => {
+    img.onclick = () => openLightbox(img.dataset.full);
+  });
+  previewList.querySelectorAll('[data-action="download-all-images"]').forEach(btn => {
+    btn.onclick = () => {
+      const item = items.find(i => i.id === Number(btn.dataset.id));
+      if (item?.data?.images) downloadAllImages(item.data.images);
+    };
+  });
+  previewList.querySelectorAll('[data-action="copy-link"]').forEach(btn => {
+    btn.onclick = async () => {
+      const url = btn.dataset.url;
+      try {
+        await navigator.clipboard.writeText(url);
+        showToast("✅ 链接已复制到剪贴板！");
+      } catch (e) {
+        showToast("❌ 复制失败，请手动复制");
+      }
+    };
+  });
+
+  // 视频播放统计
+  previewList.querySelectorAll('video').forEach(video => {
+    video.addEventListener('play', () => {
+      console.log('▶️ 视频开始播放');
+    });
+  });
+}
+
+// ===== 工具函数 =====
+async function downloadAllImages(images) {
+  showToast(`📥 开始下载 ${images.length} 张图片...`);
+  for (let i = 0; i < images.length; i++) {
+    const a = document.createElement("a");
+    a.href = images[i]; a.target = "_blank"; a.download = `tiktok_image_${i+1}.jpg`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    await new Promise(r => setTimeout(r, 400));
+  }
+  showToast(`✅ 已触发 ${images.length} 张图片下载！`);
+}
+
+function openLightbox(src) {
+  const lb = document.createElement("div"); lb.className = "lightbox";
+  lb.innerHTML = `<button class="lightbox-close">&times;</button><img src="${src}" alt="预览大图"/>`;
+  lb.onclick = e => { if (e.target === lb || e.target.classList.contains("lightbox-close")) lb.remove(); };
+  document.body.appendChild(lb);
+  // ESC 键关闭
+  const closeHandler = (e) => {
+    if (e.key === "Escape") {
+      lb.remove();
+      document.removeEventListener("keydown", closeHandler);
+    }
+  };
+  document.addEventListener("keydown", closeHandler);
+}
+
+function setLoading(v) { parseBtn.disabled = v; btnText.hidden = v; btnLoading.hidden = !v; }
+function showError(msg) { errorEl.textContent = msg; }
+function clearError() { errorEl.textContent = ""; }
+function esc(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+function escAttr(s) { return s.replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/'/g,"&#39;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+// ===== 页面加载完成提示 =====
+window.addEventListener("load", () => {
+  console.log("%c🚀 超级视频下载器", "font-size: 24px; color: #fe2c55; font-weight: bold;");
+  console.log("%c支持 TikTok & YouTube | 完全本地运行", "font-size: 14px; color: #25f4ee;");
+
+  // 检测剪贴板权限
+  if (navigator.clipboard) {
+    input.addEventListener("focus", async () => {
+      try {
+        const text = await navigator.clipboard.readText();
+        if (text && detectPlatform(text) && !input.value) {
+          input.value = text;
+          showToast("📋 已自动粘贴剪贴板链接！");
+        }
+      } catch (e) {
+        // 忽略权限错误
+      }
+    }, { once: true });
+  }
+});
+
+</script>
+</body>
+</html>

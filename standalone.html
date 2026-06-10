@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🚀 视频下载器 - 纯前端版</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0a0f; --surface: #1a1a2e; --surface-hover: #222240;
+      --primary: #fe2c55; --primary-hover: #ff4d73;
+      --secondary: #25f4ee; --secondary-hover: #3afffd;
+      --text: #fff; --text-muted: #a0a0b0; --border: #2a2a3e;
+      --error: #ff4757; --success: #2ecc71; --radius: 16px;
+      --shadow: 0 8px 32px rgba(0,0,0,0.6);
+      --glow: 0 0 20px rgba(254, 44, 85, 0.3);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background:
+        radial-gradient(circle at 20% 50%, rgba(254, 44, 85, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(37, 244, 238, 0.1) 0%, transparent 50%);
+      animation: bgFloat 20s ease-in-out infinite;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    @keyframes bgFloat {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      33% { transform: translate(30px, -30px) rotate(120deg); }
+      66% { transform: translate(-20px, 20px) rotate(240deg); }
+    }
+
+    .app {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 3rem;
+      animation: slideDown 0.6s ease-out;
+    }
+
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .title {
+      font-size: 2.8rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 50%, #8a2be2 100%);
+      background-size: 200% 200%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.5rem;
+      animation: gradientShift 3s ease infinite;
+    }
+
+    @keyframes gradientShift {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .badge {
+      display: inline-block;
+      background: rgba(37, 244, 238, 0.2);
+      color: var(--secondary);
+      padding: 0.4rem 1rem;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      border: 1px solid var(--secondary);
+    }
+
+    .input-area {
+      background: rgba(26, 26, 46, 0.6);
+      backdrop-filter: blur(10px);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      box-shadow: var(--shadow);
+    }
+
+    .input-row {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .input {
+      flex: 1;
+      padding: 1rem 1.5rem;
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      background: rgba(26, 26, 46, 0.8);
+      color: var(--text);
+      font-size: 1rem;
+      outline: none;
+      transition: all 0.3s ease;
+    }
+
+    .input:focus {
+      border-color: var(--primary);
+      box-shadow: var(--glow);
+    }
+
+    .btn {
+      padding: 1rem 2rem;
+      border: none;
+      border-radius: var(--radius);
+      background: linear-gradient(135deg, var(--primary), #ff1744);
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(254, 44, 85, 0.4);
+    }
+
+    .btn:hover:not(:disabled) {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 25px rgba(254, 44, 85, 0.6);
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .info {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      text-align: center;
+    }
+
+    .result-area {
+      margin-top: 2rem;
+    }
+
+    .card {
+      background: rgba(26, 26, 46, 0.6);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: var(--shadow);
+      animation: cardAppear 0.5s ease;
+    }
+
+    @keyframes cardAppear {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .video-preview {
+      width: 100%;
+      max-height: 500px;
+      border-radius: 12px;
+      margin: 1rem 0;
+    }
+
+    .download-link {
+      display: inline-block;
+      padding: 0.8rem 1.5rem;
+      background: linear-gradient(135deg, var(--secondary), #00d4ff);
+      color: #000;
+      text-decoration: none;
+      border-radius: 12px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      margin: 0.5rem;
+      box-shadow: 0 4px 15px rgba(37, 244, 238, 0.4);
+    }
+
+    .download-link:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 25px rgba(37, 244, 238, 0.6);
+    }
+
+    .error {
+      background: rgba(255, 71, 87, 0.2);
+      border: 2px solid var(--error);
+      color: var(--error);
+      padding: 1rem;
+      border-radius: var(--radius);
+      margin: 1rem 0;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      background: linear-gradient(135deg, var(--success), #27ae60);
+      color: white;
+      padding: 1rem 1.5rem;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(46, 204, 113, 0.4);
+      animation: slideInRight 0.3s ease;
+      z-index: 1000;
+    }
+
+    @keyframes slideInRight {
+      from { opacity: 0; transform: translateX(100px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    .spinner {
+      border: 3px solid rgba(255,255,255,0.3);
+      border-top: 3px solid #fff;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 0.8s linear infinite;
+      display: inline-block;
+      margin-right: 0.5rem;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 600px) {
+      .app { padding: 1.5rem 1rem; }
+      .title { font-size: 2rem; }
+      .input-row { flex-direction: column; }
+      .btn { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <h1 class="title">视频下载器</h1>
+      <p class="subtitle">纯前端版 - 无需服务器，直接在浏览器中提取</p>
+      <span class="badge">✨ 支持 TikTok & 抖音</span>
+    </header>
+
+    <div class="input-area">
+      <div class="input-row">
+        <input type="text" id="urlInput" class="input" placeholder="粘贴视频链接或分享文本..." />
+        <button id="extractBtn" class="btn" onclick="extractVideo()">🔍 提取</button>
+      </div>
+      <p class="info">💡 支持直接粘贴抖音/TikTok分享内容，自动提取链接</p>
+    </div>
+
+    <div id="result" class="result-area"></div>
+  </div>
+
+  <script>
+    // TikTok API（使用第三方API）
+    async function extractVideo() {
+      const input = document.getElementById('urlInput');
+      const resultDiv = document.getElementById('result');
+      const btn = document.getElementById('extractBtn');
+
+      let url = input.value.trim();
+      if (!url) {
+        showError('请输入链接');
+        return;
+      }
+
+      // 智能提取链接
+      url = extractUrl(url);
+      if (!url) {
+        showError('未检测到有效链接');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span>解析中...';
+      resultDiv.innerHTML = '';
+
+      try {
+        const platform = detectPlatform(url);
+
+        if (platform === 'tiktok') {
+          await extractTikTok(url);
+        } else if (platform === 'douyin') {
+          await extractDouyin(url);
+        } else {
+          showError('仅支持 TikTok 和抖音链接');
+        }
+      } catch (error) {
+        showError('解析失败: ' + error.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '🔍 提取';
+      }
+    }
+
+    function extractUrl(text) {
+      // 抖音
+      const douyinMatch = text.match(/https?:\/\/v\.douyin\.com\/[a-zA-Z0-9_]+/i);
+      if (douyinMatch) return douyinMatch[0];
+
+      const douyinFullMatch = text.match(/https?:\/\/(?:www\.)?douyin\.com\/(?:video|share\/video)\/\d+/i);
+      if (douyinFullMatch) return douyinFullMatch[0];
+
+      // TikTok
+      const tiktokMatch = text.match(/https?:\/\/(?:www\.|vm\.|vt\.|m\.)?tiktok\.com\/[^\s]*/i);
+      if (tiktokMatch) return tiktokMatch[0].split(/[\s\n]/)[0];
+
+      if (text.startsWith('http://') || text.startsWith('https://')) {
+        return text.split(/[\s\n]/)[0];
+      }
+
+      return null;
+    }
+
+    function detectPlatform(url) {
+      if (/douyin\.com/i.test(url)) return 'douyin';
+      if (/tiktok\.com/i.test(url)) return 'tiktok';
+      return null;
+    }
+
+    async function extractTikTok(url) {
+      const api = `https://www.tikwm.com/api/?url=${encodeURIComponent(url)}&hd=1`;
+
+      const response = await fetch(api);
+      const data = await response.json();
+
+      if (data.code !== 0 || !data.data) {
+        throw new Error(data.msg || 'TikTok 解析失败');
+      }
+
+      const video = data.data;
+      showResult({
+        title: video.title || '无标题',
+        author: video.author?.nickname || '未知作者',
+        cover: video.origin_cover || video.cover,
+        videoUrl: video.hdplay || video.play,
+        musicUrl: video.music,
+        images: video.images,
+        platform: 'TikTok'
+      });
+    }
+
+    async function extractDouyin(url) {
+      showError('抖音视频需要通过后端API解析（防盗链限制）。请使用完整版下载器：<a href="index.html" style="color: var(--secondary);">index.html</a>');
+    }
+
+    function showResult(data) {
+      const resultDiv = document.getElementById('result');
+
+      let html = `
+        <div class="card">
+          <h3>📺 ${esc(data.platform)}</h3>
+          <p><strong>标题：</strong>${esc(data.title)}</p>
+          <p><strong>作者：</strong>${esc(data.author)}</p>
+      `;
+
+      if (data.images && data.images.length > 0) {
+        html += '<p><strong>图集：</strong></p>';
+        data.images.forEach((img, i) => {
+          html += `<img src="${img}" style="width: 150px; margin: 5px; border-radius: 8px;" />`;
+        });
+        html += '<br />';
+        data.images.forEach((img, i) => {
+          html += `<a href="${img}" download="image_${i+1}.jpg" class="download-link">📥 下载图片 ${i+1}</a>`;
+        });
+      } else if (data.videoUrl) {
+        html += `<video src="${data.videoUrl}" poster="${data.cover}" controls class="video-preview"></video>`;
+        html += `<a href="${data.videoUrl}" download="video.mp4" class="download-link">⬇️ 下载视频</a>`;
+      }
+
+      if (data.musicUrl) {
+        html += `<a href="${data.musicUrl}" download="music.mp3" class="download-link">🎵 下载音乐</a>`;
+      }
+
+      html += '</div>';
+      resultDiv.innerHTML = html;
+      showToast('✅ 解析成功！');
+    }
+
+    function showError(msg) {
+      const resultDiv = document.getElementById('result');
+      resultDiv.innerHTML = `<div class="error">❌ ${msg}</div>`;
+    }
+
+    function showToast(msg) {
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.textContent = msg;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    }
+
+    function esc(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // 回车提交
+    document.getElementById('urlInput').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') extractVideo();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>📱 视频下载器 - 在线版</title>
+  <meta name="description" content="免费在线视频下载工具，支持抖音、TikTok" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    :root {
+      --bg: #0a0a0f; --surface: #1a1a2e; --primary: #fe2c55; --secondary: #25f4ee;
+      --text: #fff; --text-muted: #a0a0b0; --border: #2a2a3e; --error: #ff4757;
+      --success: #2ecc71; --radius: 16px; --shadow: 0 8px 32px rgba(0,0,0,0.6);
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg); color: var(--text); min-height: 100vh; line-height: 1.6;
+    }
+    body::before {
+      content: ''; position: fixed; top: -50%; left: -50%; width: 200%; height: 200%;
+      background: radial-gradient(circle at 20% 50%, rgba(254, 44, 85, 0.15) 0%, transparent 50%),
+                  radial-gradient(circle at 80% 80%, rgba(37, 244, 238, 0.15) 0%, transparent 50%);
+      animation: bgFloat 20s ease-in-out infinite; pointer-events: none; z-index: 0;
+    }
+    @keyframes bgFloat { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(20px, -20px); } }
+    .app { position: relative; z-index: 1; padding: 1rem; max-width: 600px; margin: 0 auto; }
+    .header { text-align: center; padding: 2rem 0 1.5rem; }
+    .title {
+      font-size: 2rem; font-weight: 800;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; margin-bottom: 0.5rem;
+    }
+    .subtitle { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.75rem; }
+    .badges { display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; }
+    .badge {
+      background: rgba(37, 244, 238, 0.2); color: var(--secondary);
+      padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.75rem;
+      border: 1px solid var(--secondary);
+    }
+    .input-area {
+      background: rgba(26, 26, 46, 0.8); backdrop-filter: blur(20px);
+      border: 2px solid var(--border); border-radius: var(--radius);
+      padding: 1.25rem; margin-bottom: 1.5rem; box-shadow: var(--shadow);
+    }
+    .input { width: 100%; padding: 1rem; border: 2px solid var(--border); border-radius: 12px;
+      background: rgba(26, 26, 46, 0.9); color: var(--text); font-size: 1rem; outline: none;
+    }
+    .input:focus { border-color: var(--primary); }
+    .btn {
+      width: 100%; padding: 1rem; border: none; border-radius: 12px; margin-top: 0.75rem;
+      background: linear-gradient(135deg, var(--primary), #ff1744); color: #fff;
+      font-size: 1rem; font-weight: 700; cursor: pointer;
+      box-shadow: 0 4px 15px rgba(254, 44, 85, 0.4);
+    }
+    .btn:active:not(:disabled) { transform: scale(0.98); }
+    .btn:disabled { opacity: 0.6; }
+    .info { color: var(--text-muted); font-size: 0.8rem; text-align: center; margin-top: 0.75rem; }
+    .result-area { margin-top: 1.5rem; }
+    .card {
+      background: rgba(26, 26, 46, 0.8); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1rem;
+      box-shadow: var(--shadow);
+    }
+    .video-preview { width: 100%; max-height: 400px; border-radius: 12px; margin: 1rem 0; }
+    .download-btn {
+      display: block; width: 100%; padding: 0.9rem; margin: 0.5rem 0;
+      background: linear-gradient(135deg, var(--secondary), #00d4ff);
+      color: #000; text-decoration: none; border-radius: 12px;
+      font-weight: 600; text-align: center;
+    }
+    .error { background: rgba(255, 71, 87, 0.2); border: 2px solid var(--error);
+      color: var(--error); padding: 1rem; border-radius: var(--radius); margin: 1rem 0;
+    }
+    .toast {
+      position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%);
+      background: linear-gradient(135deg, var(--success), #27ae60); color: white;
+      padding: 0.9rem 1.5rem; border-radius: 12px; z-index: 1000;
+    }
+    .guide {
+      background: rgba(37, 244, 238, 0.1); border: 2px solid var(--secondary);
+      padding: 1.25rem; border-radius: var(--radius); margin: 1.5rem 0;
+    }
+    .guide h3 { color: var(--secondary); margin-bottom: 0.75rem; font-size: 1.1rem; }
+    .guide ol { margin-left: 1.5rem; line-height: 2; }
+    .guide li { margin-bottom: 0.5rem; }
+    .footer { text-align: center; padding: 2rem 1rem; color: var(--text-muted); font-size: 0.8rem; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <h1 class="title">📱 视频下载器</h1>
+      <p class="subtitle">在线版 · 免费使用</p>
+      <div class="badges">
+        <span class="badge">✅ TikTok</span>
+        <span class="badge">⚠️ 抖音受限</span>
+      </div>
+    </header>
+
+    <div class="input-area">
+      <input type="text" id="urlInput" class="input" placeholder="粘贴视频链接..." />
+      <button id="extractBtn" class="btn" onclick="extractVideo()">🔍 立即解析</button>
+      <p class="info">💡 支持TikTok视频、图集、音频</p>
+    </div>
+
+    <div id="result" class="result-area"></div>
+
+    <div class="guide">
+      <h3>📋 关于抖音视频下载</h3>
+      <p style="color: var(--text-muted); margin-bottom: 1rem;">由于抖音平台的严格限制，纯前端无法稳定解析。推荐以下方案：</p>
+
+      <h4 style="color: var(--text); margin: 1rem 0 0.5rem;">🎯 最佳方案（需要电脑）：</h4>
+      <ol style="color: var(--text-muted);">
+        <li>下载本项目文件到电脑</li>
+        <li>安装 Node.js 和 yt-dlp</li>
+        <li>运行 <code style="background: rgba(0,0,0,0.3); padding: 0.2rem 0.5rem; border-radius: 4px;">node server.js</code></li>
+        <li>手机访问电脑IP地址（同WiFi下）</li>
+        <li>100%成功率，支持抖音+TikTok+YouTube</li>
+      </ol>
+
+      <h4 style="color: var(--text); margin: 1rem 0 0.5rem;">💡 免费部署方案：</h4>
+      <ol style="color: var(--text-muted);">
+        <li><strong>Vercel</strong> - 免费，但功能受限</li>
+        <li><strong>Render</strong> - 免费，冷启动慢</li>
+        <li><strong>Railway</strong> - 每月$5额度</li>
+      </ol>
+
+      <h4 style="color: var(--text); margin: 1rem 0 0.5rem;">🔗 其他方案：</h4>
+      <ol style="color: var(--text-muted);">
+        <li>使用在线工具网站（搜索"抖音视频下载"）</li>
+        <li>使用抖音APP内置保存功能</li>
+        <li>使用浏览器插件（需验证安全性）</li>
+      </ol>
+    </div>
+
+    <footer class="footer">
+      <p>✨ 开源免费 · 无广告 · 保护隐私</p>
+      <p style="margin-top: 0.5rem;">本工具仅供学习交流，请尊重版权</p>
+    </footer>
+  </div>
+
+  <script>
+    async function extractVideo() {
+      const input = document.getElementById('urlInput');
+      const result = document.getElementById('result');
+      let url = input.value.trim();
+
+      if (!url) {
+        result.innerHTML = '<div class="error">❌ 请输入视频链接</div>';
+        return;
+      }
+
+      url = extractUrl(url);
+      if (!url) {
+        result.innerHTML = '<div class="error">❌ 未检测到有效链接</div>';
+        return;
+      }
+
+      const platform = detectPlatform(url);
+
+      if (platform === 'douyin') {
+        result.innerHTML = `
+          <div class="error">
+            <h3 style="margin-bottom: 0.5rem;">⚠️ 抖音视频无法解析</h3>
+            <p>抖音有严格的防盗链保护，纯前端版本无法处理。</p>
+            <p style="margin-top: 0.5rem;">请查看上方推荐方案 👆</p>
+          </div>
+        `;
+        return;
+      }
+
+      if (platform !== 'tiktok') {
+        result.innerHTML = '<div class="error">❌ 仅支持 TikTok 和抖音链接</div>';
+        return;
+      }
+
+      document.getElementById('extractBtn').disabled = true;
+      document.getElementById('extractBtn').textContent = '解析中...';
+      result.innerHTML = '';
+
+      try {
+        await extractTikTok(url);
+      } catch (error) {
+        result.innerHTML = `<div class="error">❌ ${error.message}</div>`;
+      } finally {
+        document.getElementById('extractBtn').disabled = false;
+        document.getElementById('extractBtn').textContent = '🔍 立即解析';
+      }
+    }
+
+    function extractUrl(text) {
+      let match = text.match(/https?:\/\/v\.douyin\.com\/[a-zA-Z0-9_]+/i);
+      if (match) return match[0];
+      match = text.match(/https?:\/\/(?:www\.)?douyin\.com\/(?:video|share\/video)\/\d+/i);
+      if (match) return match[0];
+      match = text.match(/https?:\/\/(?:www\.|vm\.|vt\.|m\.)?tiktok\.com\/[^\s]*/i);
+      if (match) return match[0].split(/[\s\n\r]/)[0];
+      if (text.startsWith('http')) return text.split(/[\s\n\r]/)[0];
+      return null;
+    }
+
+    function detectPlatform(url) {
+      if (/douyin\.com/i.test(url)) return 'douyin';
+      if (/tiktok\.com/i.test(url)) return 'tiktok';
+      return null;
+    }
+
+    async function extractTikTok(url) {
+      const api = `https://www.tikwm.com/api/?url=${encodeURIComponent(url)}&hd=1`;
+      const response = await fetch(api);
+      const data = await response.json();
+
+      if (data.code !== 0 || !data.data) {
+        throw new Error('TikTok 解析失败');
+      }
+
+      const video = data.data;
+      const result = document.getElementById('result');
+
+      let html = '<div class="card"><h3 style="margin-bottom:1rem;">✅ 解析成功</h3>';
+      html += `<p><strong>标题：</strong>${esc(video.title || '无标题')}</p>`;
+      html += `<p><strong>作者：</strong>@${esc(video.author?.nickname || '未知')}</p>`;
+
+      if (video.images && video.images.length > 0) {
+        html += `<p style="margin-top:0.5rem;"><strong>图集 (${video.images.length}张)</strong></p>`;
+        video.images.forEach((img, i) => {
+          html += `<a href="${img}" download="image_${i+1}.jpg" class="download-btn">📥 下载图片 ${i+1}</a>`;
+        });
+      } else if (video.hdplay || video.play) {
+        const videoUrl = video.hdplay || video.play;
+        html += `<video src="${videoUrl}" poster="${video.cover}" controls playsinline class="video-preview"></video>`;
+        html += `<a href="${videoUrl}" download="video.mp4" class="download-btn">⬇️ 下载视频</a>`;
+      }
+
+      if (video.music) {
+        html += `<a href="${video.music}" download="music.mp3" class="download-btn" style="background:rgba(255,255,255,0.1);color:var(--text);">🎵 下载音乐</a>`;
+      }
+
+      html += '</div>';
+      result.innerHTML = html;
+
+      showToast('✅ TikTok 解析成功！');
+    }
+
+    function showToast(msg) {
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.textContent = msg;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    }
+
+    function esc(text) {
+      const div = document.createElement('div');
+      div.textContent = text || '';
+      return div.innerHTML;
+    }
+
+    document.getElementById('urlInput').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') extractVideo();
+    });
+  </script>
+</body>
+</html>
