@@ -10,6 +10,7 @@ const { URL } = require("url");
 
 const PORT = process.env.PORT || 3000;
 const TMP_DIR = path.join(__dirname, "tmp");
+const YTDLP = process.env.RENDER ? path.join(__dirname, "yt-dlp") : "yt-dlp";
 
 // ===== 简单的内存缓存（提升重复查询速度）=====
 const cache = new Map();
@@ -81,7 +82,7 @@ function childEnv() {
 }
 
 // ===== 启动时检查 yt-dlp 是否可用 =====
-execFile("yt-dlp", ["--version"], (err, stdout) => {
+execFile(YTDLP, ["--version"], (err, stdout) => {
   if (err) {
     console.error("\n❌ 未检测到 yt-dlp，请先安装：https://github.com/yt-dlp/yt-dlp\n");
   } else {
@@ -215,7 +216,7 @@ function handleDouyinDownload(reqUrl, res) {
   const base = path.join(TMP_DIR, `douyin_${Date.now()}_${Math.random().toString(36).slice(2)}`);
   const outTpl = base + ".%(ext)s";
 
-  execFile("yt-dlp", ["--print", "%(title)s", "--no-playlist", "--no-warnings", url], { env: childEnv() }, (e, titleOut) => {
+  execFile(YTDLP, ["--print", "%(title)s", "--no-playlist", "--no-warnings", url], { env: childEnv() }, (e, titleOut) => {
     const title = sanitize((titleOut || "douyin_video").trim()) || "douyin_video";
 
     const ffmpegArg = FFMPEG_DIR ? ["--ffmpeg-location", FFMPEG_DIR] : [];
@@ -223,7 +224,7 @@ function handleDouyinDownload(reqUrl, res) {
 
     console.log(`[下载中] 抖音: ${title}`);
 
-    execFile("yt-dlp", args, { maxBuffer: 50 * 1024 * 1024, env: childEnv() }, (err, stdout, stderr) => {
+    execFile(YTDLP, args, { maxBuffer: 50 * 1024 * 1024, env: childEnv() }, (err, stdout, stderr) => {
       if (err) {
         console.error("抖音下载失败:", stderr || err.message);
         return sendJson(res, 500, { error: "下载失败: " + cleanErr(stderr || err.message) });
@@ -262,7 +263,7 @@ function handleDownload(reqUrl, res) {
   const outTpl = base + ".%(ext)s";
 
   // 先取标题作为文件名
-  execFile("yt-dlp", ["--print", "%(title)s", "--no-playlist", "--no-warnings", url], { env: childEnv() }, (e, titleOut) => {
+  execFile(YTDLP, ["--print", "%(title)s", "--no-playlist", "--no-warnings", url], { env: childEnv() }, (e, titleOut) => {
     const title = sanitize((titleOut || "video").trim()) || "video";
 
     const ffmpegArg = FFMPEG_DIR ? ["--ffmpeg-location", FFMPEG_DIR] : [];
@@ -272,7 +273,7 @@ function handleDownload(reqUrl, res) {
 
     console.log(`[下载中] ${title} ${audioOnly ? "(音频)" : ""}`);
 
-    execFile("yt-dlp", args, { maxBuffer: 50 * 1024 * 1024, env: childEnv() }, (err, stdout, stderr) => {
+    execFile(YTDLP, args, { maxBuffer: 50 * 1024 * 1024, env: childEnv() }, (err, stdout, stderr) => {
       if (err) {
         console.error("下载失败:", stderr || err.message);
         return sendJson(res, 500, { error: "下载失败: " + cleanErr(stderr || err.message) });
